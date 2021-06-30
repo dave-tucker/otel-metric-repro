@@ -8,46 +8,21 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 )
 
+var widget int64
+
 func main() {
-	var widget int64
 
 	ctx := context.Background()
-
-	traceExporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint("otel:4317"),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-	)
-	if err != nil {
-		log.Fatalf("failed to initialize export pipeline: %v", err)
-	}
-	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithSpanProcessor(bsp),
-	)
-	otel.SetTracerProvider(tracerProvider)
-
-	// set global propagator to tracecontext (the default is no-op).
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-
-	// Handle this error in a sensible manner where possible
-	defer func() { _ = tracerProvider.Shutdown(ctx) }()
-
 	metricExporter, err := otlpmetricgrpc.New(
 		ctx,
 		otlpmetricgrpc.WithInsecure(),
